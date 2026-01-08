@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+@layer base {
+  input, textarea, button, select, a {
+    -webkit-app-region: no-drag !important;
+    pointer-events: auto !important;
+    cursor: pointer;
+  }
+  
+  input[type="text"], input[type="email"], input[type="password"], input[type="number"] {
+    cursor: text;
+  }
+
+  /* Ensure the root doesn't block clicks if it accidentally has drag */
+  #root {
+    -webkit-app-region: no-drag;
+  }
+}
