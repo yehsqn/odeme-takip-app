@@ -1,38 +1,98 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import i18n from './i18n/i18n.js'
 import Dashboard from './components/Dashboard'
 import Settings from './components/Settings'
 import Auth from './components/Auth'
 import PinScreen from './components/PinScreen'
 import CurrencyPage from './components/CurrencyPage'
+import AIFinanceCoach from './components/AIFinanceCoach'
+import BottomNavbar from './components/BottomNavbar'
+
 import { PaymentProvider, usePayment } from './context/PaymentContext'
+import { ToastProvider } from './components/Toast'
+import { authGetLanguage, dbStatus } from './api/client'
+import { GoogleOAuthProvider } from '@react-oauth/google'
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+
 
 const AppContent = ({ darkMode, setDarkMode }) => {
   const [currentView, setCurrentView] = useState('dashboard');
-  const [pinMode, setPinMode] = useState(false); // true if we are asking for PIN
+  const [pinMode, setPinMode] = useState(false);
   const { user, login, verifyPin, logout, getUser } = usePayment();
+  const { t } = useTranslation();
 
-  // Check for saved session on mount
+    // Check for saved session on mount (PIN mode only)
+    useEffect(() => {
+        const checkSession = async () => {
+            const savedUserId = localStorage.getItem('userId');
+            if (!user && savedUserId) {
+                const result = await getUser(savedUserId);
+                if (result.success) {
+                    if (result.user.hasPin) {
+                        setPinMode(true);
+                    }
+                    // Removed automatic login without PIN as per user request
+                    // MongoDB'den dil ayarını yükle
+                    try {
+                        const langResult = await authGetLanguage(savedUserId);
+                        if (langResult.success && langResult.language) {
+                            i18n.changeLanguage(langResult.language);
+                        }
+                    } catch (e) { /* Hata yönetimi */ }
+                } else {
+                    if (result.error && (result.error.includes('bulunamadı') || result.error.includes('found'))) {
+                        console.log('User not found, clearing session...');
+                        localStorage.removeItem('userId');
+                    } else {
+                        console.error('Session restore failed (transient?):', result.error);
+                    }
+                }
+            }
+        };
+        checkSession();
+    }, [user]);
+
+  const [dbConnected, setDbConnected] = useState(false);
+  const [error, setError] = useState(null);
+
   useEffect(() => {
-    const checkSession = async () => {
-      const savedUserId = localStorage.getItem('userId');
-      if (!user && savedUserId) {
-        // Fetch user info to see if PIN is required
-        const result = await getUser(savedUserId);
-        if (result.success) {
-          if (result.user.hasPin) {
-            setPinMode(true);
-          } else {
-            // No PIN, auto login
-            login(result.user, true);
-          }
+    const checkDb = async () => {
+      try {
+        const status = await dbStatus();
+        if (status.connected) {
+          setDbConnected(true);
         } else {
-          // Invalid user ID
-          localStorage.removeItem('userId');
+          setTimeout(checkDb, 1000);
         }
+      } catch (err) {
+        console.error("DB Check Error:", err);
+        setError(t('dbErrorMsg'));
       }
     };
-    checkSession();
-  }, [user]);
+    setError(null);
+    checkDb();
+  }, []);
+
+  if (error) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-red-50 p-6 flex-col">
+        <h1 className="text-2xl font-bold text-red-600 mb-4">{t('dbError')}</h1>
+        <p className="text-gray-700">{error}</p>
+      </div>
+    );
+  }
+
+  if (!dbConnected) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50 flex-col animate-in fade-in zoom-in duration-300">
+        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-6"></div>
+        <h1 className="text-xl font-semibold text-gray-800">{t('appLoading')}</h1>
+        <p className="text-gray-500 mt-2">{t('dbWaiting')}</p>
+      </div>
+    );
+  }
 
   const handlePinComplete = async (pin) => {
     const savedUserId = localStorage.getItem('userId');
@@ -41,7 +101,6 @@ const AppContent = ({ darkMode, setDarkMode }) => {
       if (result.success) {
         setPinMode(false);
       } else {
-        // Error handling is inside PinScreen ideally, or we can pass error prop
         alert('PIN Hatalı!');
       }
     }
@@ -49,48 +108,57 @@ const AppContent = ({ darkMode, setDarkMode }) => {
 
   if (pinMode) {
     return (
-      <PinScreen 
-        mode="verify" 
-        onComplete={handlePinComplete} 
-        onCancel={() => {
-          localStorage.removeItem('userId');
-          setPinMode(false);
-          logout();
-        }}
-        title="Hoş Geldiniz"
-        subtitle="Tekrar giriş yapmak için PIN kodunuzu girin"
-      />
+      <>
+        <PinScreen
+          mode="verify"
+          onComplete={handlePinComplete}
+          onCancel={() => {
+            localStorage.removeItem('userId');
+            setPinMode(false);
+            logout();
+          }}
+          title={t('loginTitle')}
+          subtitle={t('loginSubtitle')}
+        />
+      </>
     );
   }
 
   if (!user) {
-    return <Auth onLogin={(u, r) => { login(u, r); setCurrentView('dashboard'); }} />;
+    return (
+      <>
+        <Auth onLogin={(u, r) => { login(u, r); setCurrentView('dashboard'); }} />
+      </>
+    );
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="flex-grow">
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-slate-950">
+      <div className="flex-grow pb-16 md:pb-0">
         {currentView === 'dashboard' ? (
           <Dashboard onNavigate={setCurrentView} />
+        ) : currentView === 'ai' ? (
+          <div className="animate-fade-in">
+            <AIFinanceCoach onBack={() => setCurrentView('dashboard')} />
+          </div>
         ) : currentView === 'currency' ? (
-            <div>
-                <button 
-                    onClick={() => setCurrentView('dashboard')}
-                    className="m-4 px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-                >
-                    &larr; Geri Dön
-                </button>
-                <CurrencyPage />
-            </div>
+          <div className="animate-fade-in">
+            <CurrencyPage onBack={() => setCurrentView('dashboard')} />
+          </div>
         ) : (
-          <Settings 
-            onBack={() => setCurrentView('dashboard')} 
-            darkMode={darkMode}
-            setDarkMode={setDarkMode}
-          />
+          <div className="animate-fade-in">
+            <Settings
+              onBack={() => setCurrentView('dashboard')}
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+            />
+          </div>
         )}
       </div>
-      <footer className="py-4 text-center text-sm text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+
+      <BottomNavbar currentView={currentView} onNavigate={setCurrentView} />
+
+      <footer className="hidden md:block py-4 text-center text-sm text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
         Created by <a href="https://www.yehsan.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">yehsqn</a>
       </footer>
     </div>
@@ -100,7 +168,7 @@ const AppContent = ({ darkMode, setDarkMode }) => {
 function App() {
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') === 'dark' || 
+      return localStorage.getItem('theme') === 'dark' ||
         (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
     }
     return false;
@@ -117,10 +185,14 @@ function App() {
   }, [darkMode]);
 
   return (
-    <PaymentProvider>
-      <AppContent darkMode={darkMode} setDarkMode={setDarkMode} />
-    </PaymentProvider>
-  )
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <ToastProvider>
+        <PaymentProvider>
+          <AppContent darkMode={darkMode} setDarkMode={setDarkMode} />
+        </PaymentProvider>
+      </ToastProvider>
+    </GoogleOAuthProvider>
+  );
 }
 
-export default App
+export default App;

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ödeme Takip</string>
+    <string name="title_activity_main">Ödeme Takip</string>
+    <string name="package_name">com.yehsqn.odemetakip</string>
+    <string name="custom_url_scheme">com.yehsqn.odemetakip</string>
+</resources>

@@ -1,0 +1,16 @@
+ÖDEME TAKİP SİSTEMİ - KULLANIM SÖZLEŞMESİ
+
+Copyright (c) 2026 yehsqn
+
+Bu yazılım yehsqn tarafından geliştirilmiştir.
+
+Tüm hakları saklıdır.
+
+Bu yazılımı kullanarak aşağıdaki şartları kabul etmiş sayılırsınız:
+
+1. Bu yazılım "olduğu gibi" sunulmaktadır.
+2. Yazılımın kullanımından doğabilecek herhangi bir zarardan geliştirici sorumlu tutulamaz.
+3. Bu yazılımı ticari amaçla dağıtmak yasaktır.
+4. Yazılımın kaynak kodunu izinsiz değiştirmek ve dağıtmak yasaktır.
+
+Sorularınız için: https://www.yehsan.com
