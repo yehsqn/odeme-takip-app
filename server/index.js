@@ -1,4 +1,6 @@
 const path = require('path');
+// Try local .env first, then parent dir (for local dev with root .env)
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
@@ -20,14 +22,22 @@ const app = express();
 const PORT = process.env.PORT || process.env.API_PORT || 4000;
 
 // Middleware
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'capacitor://localhost',
+  'ionic://localhost',
+  'https://localhost',
+];
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'capacitor://localhost',
-    'ionic://localhost',
-    /\.vercel\.app$/
-  ],
+  origin: function(origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin) || /\.onrender\.com$/.test(origin)) {
+      return callback(null, true);
+    }
+    return callback(null, true); // Allow all for mobile app
+  },
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));

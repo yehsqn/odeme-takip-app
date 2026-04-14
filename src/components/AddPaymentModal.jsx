@@ -91,33 +91,30 @@ const AddPaymentModal = ({ isOpen, onClose, onAdd, initialData = null }) => {
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, type: 'credit_card' })}
-                className={`py-2 px-1 text-sm rounded-lg border transition-all ${
-                  formData.type === 'credit_card' 
-                    ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900/30 dark:border-blue-400 dark:text-blue-300 shadow-sm ring-1 ring-blue-500 dark:ring-blue-400' 
+                className={`py-2 px-1 text-sm rounded-lg border transition-all ${formData.type === 'credit_card'
+                    ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900/30 dark:border-blue-400 dark:text-blue-300 shadow-sm ring-1 ring-blue-500 dark:ring-blue-400'
                     : 'border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
-                }`}
+                  }`}
               >
                 Kredi Kartı
               </button>
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, type: 'check' })}
-                className={`py-2 px-1 text-sm rounded-lg border transition-all ${
-                  formData.type === 'check' 
-                    ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900/30 dark:border-blue-400 dark:text-blue-300 shadow-sm ring-1 ring-blue-500 dark:ring-blue-400' 
+                className={`py-2 px-1 text-sm rounded-lg border transition-all ${formData.type === 'check'
+                    ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900/30 dark:border-blue-400 dark:text-blue-300 shadow-sm ring-1 ring-blue-500 dark:ring-blue-400'
                     : 'border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
-                }`}
+                  }`}
               >
                 Çek
               </button>
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, type: 'promissory_note' })}
-                className={`py-2 px-1 text-sm rounded-lg border transition-all ${
-                  formData.type === 'promissory_note' 
-                    ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900/30 dark:border-blue-400 dark:text-blue-300 shadow-sm ring-1 ring-blue-500 dark:ring-blue-400' 
+                className={`py-2 px-1 text-sm rounded-lg border transition-all ${formData.type === 'promissory_note'
+                    ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900/30 dark:border-blue-400 dark:text-blue-300 shadow-sm ring-1 ring-blue-500 dark:ring-blue-400'
                     : 'border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
-                }`}
+                  }`}
               >
                 Senet
               </button>
@@ -145,27 +142,27 @@ const AddPaymentModal = ({ isOpen, onClose, onAdd, initialData = null }) => {
               <label htmlFor="payment-amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tutar</label>
               <div className="flex gap-2">
                 <input
-                    id="payment-amount"
-                    type="number"
-                    required
-                    min="0"
-                    step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  id="payment-amount"
+                  type="number"
+                  required
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                 />
                 <select
-                    value={formData.currency}
-                    onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                    className="px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  value={formData.currency}
+                  onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                  className="px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 >
-                    <option value="TRY">₺</option>
-                    <option value="USD">$</option>
-                    <option value="EUR">€</option>
+                  <option value="TRY">₺</option>
+                  <option value="USD">$</option>
+                  <option value="EUR">€</option>
                 </select>
               </div>
             </div>
-            
+
             {!['check', 'promissory_note'].includes(formData.type) && (
               <div>
                 <label htmlFor="payment-installments" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -212,7 +209,7 @@ const AddPaymentModal = ({ isOpen, onClose, onAdd, initialData = null }) => {
                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               />
             </div>
-            
+
             {/* Bank Selection - Enabled for ALL types now */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -224,11 +221,10 @@ const AddPaymentModal = ({ isOpen, onClose, onAdd, initialData = null }) => {
                     key={b.name}
                     type="button"
                     onClick={() => setFormData({ ...formData, bank: b.name })}
-                    className={`p-2 flex flex-col items-center justify-center gap-1 text-xs font-medium rounded-lg border transition-all h-14 ${
-                      formData.bank === b.name
+                    className={`p-2 flex flex-col items-center justify-center gap-1 text-xs font-medium rounded-lg border transition-all h-14 ${formData.bank === b.name
                         ? `${b.color} ring-2 ring-offset-1 ring-gray-300 shadow-md transform scale-105 dark:ring-gray-600`
                         : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600'
-                    }`}
+                      }`}
                   >
                     <Building2 size={16} />
                     <span className="text-center leading-tight truncate w-full">{b.name}</span>
