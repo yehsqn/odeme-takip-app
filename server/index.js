@@ -2,24 +2,42 @@ const path = require('path');
 // Try local .env first, then parent dir (for local dev with root .env)
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+const http = require('http');
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const { initDb } = require('./db/turso');
+const { initWebSocket } = require('./websocket');
+const { initCron } = require('./cron');
+const { initTelegramBot } = require('./bot');
 
 const authRoutes = require('./routes/auth');
 const paymentRoutes = require('./routes/payments');
 const settingsRoutes = require('./routes/settings');
 const incomeRoutes = require('./routes/income');
-const exchangeRoutes = require('./routes/exchange');
 const subscriptionRoutes = require('./routes/subscription');
 const dbRoutes = require('./routes/db');
-const telegramRoutes = require('./routes/telegram');
 const backupRoutes = require('./routes/backup');
 const aiRoutes = require('./routes/ai');
+const notificationRoutes = require('./routes/notifications');
+const telegramRoutes = require('./routes/telegram');
+const customerProfileRoutes = require('./routes/customer-profile');
 
 const app = express();
 const PORT = process.env.PORT || process.env.API_PORT || 4000;
+
+// ── Güvenlik Önlemleri ──────────────────────────────────────────
+// Sunucu teknolojisini gizle
+app.disable('x-powered-by');
+
+// Temel Güvenlik HTTP Başlıkları (XSS, Clickjacking, MIME sniffing engelleme)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
 
 // Middleware
 const allowedOrigins = [
@@ -31,35 +49,61 @@ const allowedOrigins = [
 ];
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin) || /\.onrender\.com$/.test(origin)) {
       return callback(null, true);
     }
-    return callback(null, true); // Allow all for mobile app
+    return callback(null, true); // Mobile / desktop app compat
   },
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
 
-// Rate limiting
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
+// Genel API Rate limiting (DoS önleme)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  message: { success: false, error: 'Çok fazla istek gönderildi. Lütfen bir süre sonra tekrar deneyin.' }
+});
 app.use('/api/', limiter);
 
-// Health check
+// Giriş ve Şifre rotaları için Katı Rate Limiting (Brute-force / Şifre tahmin saldırılarını engelleme)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 dakika
+  max: 20, // 15 dakikada en fazla 20 deneme
+  message: { success: false, error: 'Çok fazla giriş denemesi yapıldı. Güvenliğiniz için lütfen 15 dakika bekleyin.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Kök karşılama ve Uyanık tutma (Keep-Alive / Cron) rotası
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'PayPulse API ve Telegram Botu aktif',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Health check & ping (UptimeRobot ve dış servisler için)
 app.get('/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
+app.get('/ping', (req, res) => res.send('pong'));
 
 // Routes
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/verify-pin', authLimiter);
+app.use('/api/auth/verify-income-password', authLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/income', incomeRoutes);
-app.use('/api/exchange', exchangeRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/db', dbRoutes);
-app.use('/api/telegram', telegramRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/telegram', telegramRoutes);
+app.use('/api/customer-profile', customerProfileRoutes);
 
 // Error Reporting Endpoint
 app.post('/api/errors', async (req, res) => {
@@ -73,19 +117,50 @@ app.post('/api/errors', async (req, res) => {
 });
 
 // 404
-app.use((req, res) => res.status(404).json({ error: 'Not found' }));
+app.use((req, res) => res.status(404).json({ error: 'Endpoint bulunamadı' }));
 
-// Error handler
+// Güvenli Error handler (Veritabanı ve sunucu detaylarını dışarı sızdırmaz)
 app.use((err, req, res, next) => {
   console.error('[API Error]', err.message);
-  res.status(500).json({ error: err.message });
+  res.status(500).json({ success: false, error: 'İşlem sırasında bir hata oluştu. Lütfen daha sonra tekrar deneyin.' });
 });
 
-// Connect and start
+// HTTP sunucusu oluştur (WebSocket için http.Server gerekli)
+const server = http.createServer(app);
+
+// Connect DB → WebSocket → Cron → Start
 initDb()
   .then(() => {
     console.log('[DB] Turso bağlandı ✓');
-    app.listen(PORT, () => console.log(`[API] Server running on port ${PORT}`));
+
+    // WebSocket sunucusunu başlat
+    initWebSocket(server);
+
+    // Cron zamanlayıcısını başlat
+    initCron();
+
+    // Telegram bot dinleyicisini başlat
+    initTelegramBot();
+
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`[API] Port ${PORT} zaten kullanımda, mevcut sunucu üzerinden devam ediliyor.`);
+      } else {
+        console.error('[API] Server error:', err.message);
+      }
+    });
+
+    server.listen(PORT, () => {
+      console.log(`[API] Server running on port ${PORT}`);
+      console.log(`[WS]  WebSocket: ws://localhost:${PORT}/ws`);
+
+      // Render spin-down sonrası uyanma kaydı (UptimeRobot her 5 dakikada ping atar)
+      const externalUrl = process.env.RENDER_EXTERNAL_URL || process.env.VITE_API_URL || '';
+      if (externalUrl) {
+        console.log(`[KEEP-ALIVE] UptimeRobot hedefi: ${externalUrl}/health`);
+        console.log('[KEEP-ALIVE] Sunucu sürekli açık tutmak için uptimerobot.com adresinde monitor oluşturun.');
+      }
+    });
   })
   .catch(err => {
     console.error('[DB] Turso bağlantı hatası:', err.message);
