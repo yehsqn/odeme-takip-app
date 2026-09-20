@@ -4,4 +4,7 @@
     <string name="title_activity_main">Ödeme Takip</string>
     <string name="package_name">com.yehsqn.odemetakip</string>
     <string name="custom_url_scheme">com.yehsqn.odemetakip</string>
+    <!-- Google Sign-In: Web Application OAuth 2.0 Client ID -->
+    <string name="server_client_id">214147261440-rmmia8qnauqmbo4pm382nejch7ddh99t.apps.googleusercontent.com</string>
 </resources>
+

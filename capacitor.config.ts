@@ -1,7 +1,7 @@
 import { defineConfig } from '@capacitor/cli';
 
 const config = {
-  appId: 'com.yehsqn.odemetakip',
+  appId: 'com.PayPulse',
   appName: 'Ödeme Takip',
   webDir: 'dist',
   server: {
@@ -16,6 +16,14 @@ const config = {
       launchShowDuration: 2000,
       backgroundColor: '#1e40af',
       showSpinner: false
+    },
+    // Google Sign-In (native Android & iOS)
+    GoogleAuth: {
+      // Web Application OAuth 2.0 Client ID (server-side doğrulama için)
+      clientId: '214147261440-rmmia8qnauqmbo4pm382nejch7ddh99t.apps.googleusercontent.com',
+      scopes: ['profile', 'email'],
+      serverClientId: '214147261440-rmmia8qnauqmbo4pm382nejch7ddh99t.apps.googleusercontent.com',
+      forceCodeForRefreshToken: true,
     }
   },
   android: {
@@ -26,3 +34,4 @@ const config = {
 };
 
 export default config;
+
